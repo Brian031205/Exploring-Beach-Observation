@@ -1,9 +1,9 @@
 ---
-title: "Exploring the Relationship Between Turbidity and Environmental Factors: A Linear Regression Analysis of Beach Observation Data in Toronto (2015-2023)"
+title: "Exploring Turbidity and Environmental Factors: A Multi-Linear Regression Analysis of Beach Observation Data in Toronto (2008-2023)"
 author: "Bolin Shen"
-date: "March 25, 2024"
+date: "Apr 13, 2024"
 date-format: "long" 
-abstract: "This study investigates the “Beach Observation” dataset sourced from the Toronto Open portal conducted by the City Clerk’s Office from 2015 to 2023, comprising records of beach observations. The main objective is to explore the relationship between turbidity and key environmental factors, namely rain amount, wind speed, water temperature, and air temperature. Employing a linear regression model, the investigation reveals significant associations between turbidity levels and variations in the rain amount, wind speed, air temperature, and water temperature. Notably, rainfall amount emerges as the environmental factor exhibiting the strongest correlation with turbidity levels in water bodies. The findings suggest it is necessary for policy makers, particularly in keeping close eye to these observations for avoiding natural disasters happening. These findings underscore the importance of close monitoring of such observations by policymakers to mitigate the risk of natural disasters. While this study focuses on beaches in Toronto, future research incorporating additional variables and encompassing beaches in diverse geographical regions could yield a more nuanced understanding of the factors influencing turbidity."
+abstract: "This study investigates the dynamics of water quality in Toronto's beaches, focusing on turbidity. Utilizing the extensive 'Toronto Beach Observation Dataset,' collected by Bylaw Enforcement Officers, the analysis explores intricate interactions between environmental factors and turbidity levels. By comparative analyses between Marie Curtis East Beach and Sunny Side Beach reveal, differences in turbidity levels are discovered, indicating variations in water quality. Through the application of multi-linear regression modeling, these relationships are quantified, providing valuable insights to guide informed decision-making. However, there are weaknesses and challenges in this study, such as data limitations and model uncertainties, highlighting the need for continuous research. Overall, this study contributes to understanding water quality dynamics, facilitating interventions for preserving beach health."
 thanks: "Code and data supporting this analysis is available at: https://github.com/Brian031205/Exploring-Beach-Observation"
 format: pdf
 toc: true
@@ -12,8 +12,9 @@ bibliography: ref.bib
 ---
 
 ```{r}
+#| include: false
+#| warning: false
 #| message: false
-#| echo: false
 
 #### Workspace set-up ####
 
@@ -23,59 +24,332 @@ library(knitr)
 library(janitor)
 library(here)
 library(dplyr)
+library(broom.mixed)
+library(kableExtra)
+## load data
+cleaned_beach_data = read_csv(
+  file = here("data/cleaned_beach_data.csv"),
+  show_col_types = FALSE
+)
+summarized_beach_data <-
+  cleaned_beach_data |>
+  group_by(beachName) |>
+  summarise(across(c(windSpeed, turbidity, airTemp, waterTemp, rainAmount,waterFowl), mean))
+
+summarized_beach_data_year <-
+  cleaned_beach_data |>
+  group_by(beachName,dataCollectionDate) |>
+  summarise(across(c(windSpeed, turbidity, airTemp, waterTemp, rainAmount,waterFowl), mean))
 ```
 # Introduction
 
-Beach observation stands as a paramount concern for city planners, policymakers, and residents alike, reflecting a commitment to safeguarding public health and safety. Through regular monitoring of beach conditions, municipalities aim to swiftly identify and address potential hazards or risks, including issuing advisories or closures if water quality or other conditions pose a threat to public well-being. The accumulation of observations over time yields a valuable dataset for analyzing trends and patterns in beach conditions, informing decision-making processes related to beach management, infrastructure improvements, and environmental protection initiatives. Compliance with regulatory standards and guidelines established by government agencies is essential, particularly for beaches designated for recreational use, ensuring they meet specific criteria to uphold their status and accessibility to the public.
+Observing beaches is important for urban planners, policymakers, and citizens to ensure public health and safety. Regular monitoring beach conditions allows local governments to identify and address potential risks or dangers, such as issuing warnings or closures based on water quality or other hazards. Data collected over time provides insights into beach conditions, informing decisions on beach conditions, informing decisions on management, infrastructure enhancement, and conservation efforts (OpenDataToronto 2024b). 
 
-This study seeks to examine the effect of environmental factors on water turbidity, a critical indicator of water quality. By investigating how changes in environmental factors influence turbidity, insights can be gained into the dynamics of beach conditions. Leveraging a dataset sourced from the Toronto Open Data portal, encompassing 853 records of beach observations, this study employs a multi-linear regression model to predict turbidity changes for Toronto beaches in 2024. Through this analysis, the aim is to quantify the impact of environmental factors on beach turbidity.
+This study focused on Toronto's beaches, utilizing the Toronto Beach Observation Dataset, accessible through the Toronto Open Data portal (OpenDataToronto 2024a). Through observation and analysis, researchers in Toronto have collected a wide range of data on key environmental factors across ten beaches. This dataset provides valuable insights into the complex interaction between environmental variables and beach conditions, with a specific focus on turbidity. The estimand of this study is the impact of climate and environmental factors — such as wind speed, rainfall amount, air and water temperature, wave action, and waterfowl—on beach turbidity, examining the inherent influence of these variables on the likelihood of turbidity occurrences. The objective is to deepen our understanding of beach dynamics and environmental phenomena.
 
-The analysis unveils a significant positive relationship between environmental factors and water turbidity, with rainfall amount and wind speed exhibiting stronger positive correlations with turbidity than air and water temperature. These findings underscore the imperative for regular inspections to uphold beach safety, emphasizing the need to prioritize inspections during extreme rainy and windy conditions. Furthermore, the study provides insights into urban development and environmental protection, suggesting that policymakers may need to reassess beach management strategies. It emphasizes the importance of ongoing monitoring and evaluation by urban authorities to sustain and enhance beach observation efforts citywide. These insights carry substantial implications for urban planning and environmental protection, highlighting the necessity of proactive measures to shield beaches from natural disasters.
+The findings reveal significant fluctuations in turbidity level across Toronto’s diverse beaches, reflecting different responses to environmental factors over time. Through an exploration of the nature of beach observations in Toronto, the analysis identifies consistent trends in climatic factors and their effects on beach turbidity, as well as differences in waterfowl populations reflecting environmental variations. Moreover, it highlights changes over time of beach ecosystems.
+This study contributes to our understanding and effective management of urban beaches, essential for public health and safety. Utilizing the Toronto Beach Observation Dataset, it explores the complex connections between environmental factors and beach conditions, particularly focusing on turbidity. These insights emphasize the need for effective management strategies to address diverse challenges and differences. Furthermore, the study highlights the importance of continuous monitoring to facilitate evidence-based decision-making by urban planners, policymakers, enabling proactive measures for sustainable beach management and public well-being.
 
-In conclusion, this paper significantly advances our understanding of the relationship between turbidity and various environmental factors, emphasizing the importance of proactive strategies to maintain Toronto's beaches. The subsequent sections of this paper delve into the data collection and cleaning process, the model employed for analysis, the results of the regression model, and a discussion of the limitations and potential avenues for future research.
+The paper begins by introducing the broader context and motivation behind our study. Section 2 elaborates on data sources and the important variables. Section 3 introduces the specifics of the linear regression model. This is followed by the presents of the data resulted from the model in Section 4. The final section includes discussions on Investigating the Dynamics of Water Quality in Toronto's Water Bodies; Comparative Analysis of Turbidity Trends and Environmental Factors; Model Training, Prediction, and Evaluation; Insights from Linear Regression Analysis and Predictive Modeling; as well as Weakness and Implications for Future Research.
+
 
 # Data
 The data I used in this paper are obtained from the Open Data Toronto Portal, accessed through the library `opendatatoronto` [@rOpenDataToronto]. The dataset, which covers polls conducted by the city from 2015, was first cleaned before analyzing by the open-source statistical programming language R [@r], using functionalities from `tidyverse` [@rTidyverse], `ggplot2` [@rGgplot2], `dplyr` [@rDplyr], `readr` [@rReadr], `tibble` [@rTibble], `modelsummary` [@rModelsummary], `here` [@citehere], `janitor` [@rJanitor] and `knitr` [@rKnitr].
 
-## Variables
-In the field of environmental research, understanding the intricate interplay between various factors is important.  In this study, I explore the dynamics shaping water quality in Toronto's water bodies.  At the investigation, the pivotal variable is turbidity.  Turbidity, representing the clarity of water, stands as the dependent variable under scrutiny, serving as a lens through which we analyze the impact of several independent variables.
-In this study, I identify five key variables, each contributing unique insights into the complex ecosystem of Toronto's aquatic environments.  While turbidity takes center stage as the focal point of our analysis, our exploration extends beyond its singular influence.  Rainfall amount, wind speed, air temperature, and water temperature emerge as crucial independent variables, each wielding its own potential to shape turbidity levels over the eight-year period spanning from 2015 to 2023.
-This study aims to discover the intricate relationships between these variables, shedding light on the intricate dynamics governing water quality in Toronto's aquatic ecosystems.  Through examination and statistical analyses, I strive to uncover the interactions between turbidity and its environmental counterparts, providing valuable insights for environmental management and policy making.
+## Data Survey
+In environmental research, understanding the interaction among various factors is important. This study explores the dynamics influencing water quality in Toronto's water bodies, with a particular focus on turbidity. Turbidity, representing the clarity of water, stands as the dependent variable under examination, offering a perspective to analyze the effects of several independent variables.
+
+Seven key variables have been identified, each contributing unique insights into Toronto's aquatic environments. While turbidity taking precedence in the analysis, the study extends beyond its individual influence. Beach name, data collection date, waterfowl presence, wave action, rainfall amount, wind speed, air temperature, and water temperature emerge as important independent variables, each capable of influencing turbidity levels over the thirteen-year period from 2008 to 2023. Among these variables, beach name and wave action are categorical, while waterfowl presence, rainfall amount, wind speed, air temperature, and water temperature are numerical. This study aims to discover the intricate relationships among these variables, examining the intricate dynamics governing water quality in Toronto's aquatic ecosystems.
 
 ## Measurement
-The data utilized in this study were sourced from the Open Data Toronto Portal, accessed through the library `opendatatoronto` [@rOpenDataToronto]. These data encompass beach observation records spanning from 2015 to 2023, meticulously collected and maintained in accordance with the city's standards by-law, aimed at ensuring public health and safety in Toronto.
-The beach observations were conducted by Bylaw Enforcement Officers, who utilized rigorous methodologies for the measurement and collection of data, adhering to established protocols to maintain consistency and validity. Measurement were taken at regular intervals. Consistent recordings of the data facilitate the explorations of the potential influence of the environmental factors on water turbidity.
-The dataset resulting from these measurements offers valuable insights into the dynamics of turbidity under the influence of air and water temperature, wind speed and rainfall amount. It is beneficial for researchers and analysts looking to investigate interactions between turbidity and environmental factors, and provide valuable insights for environmental management and policy making.
+The beach observations dataset, collected by City Officers following strict protocols for accuracy and reliability, forms a large-scale dataset at regular intervals. This dataset allows for exploration into the potential impact of environmental factors on water turbidity. Toronto's beaches are regularly observed by city staff, with instrumentation such as thermometers or turbidity meters used where necessary to ensure precision. Trained personnel estimate other observations, such as fowl numbers and wave action. These observations are taken from mid-May to mid-September, providing an extensive overview of beach conditions during the peak seasons (OpenDataToronto 2024a). This systematic data collection approach ensures the documentation of a broad range of environmental factors, facilitating detailed analyses and informed decision-making in environmental management and policy development.
 
+## Data summary
+The "Toronto Beach Observation Dataset" includes a thorough collection of data gathered from 10 diverse beaches in Toronto, such as Hanlan's Point Beach. @tbl-1 illustrates the observation findings of seven natural phenomena at Hanlan's Point Beach across various time intervals in 2010. These phenomena include wind speed, air temperature, water temperature, waterfowl presence, rainfall amount, wave action, and turbidity. Each entry in the table represents a distinct observation instance, enabling researchers and stakeholders to examine trends, patterns, and fluctuations in environmental conditions at Hanlan's Point Beach over time.
 
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| label: tbl-1
+#| tbl-cap: "Hanlan's Point Beach Environmental Observation Data Table"
+cleaned_beach_data_show <- head(cleaned_beach_data, 10)
+# Create the table with kable and format with kable_styling
+kable(cleaned_beach_data_show,format = "latex",  booktabs = TRUE, align = "c")|>
+  kable_styling(latex_options = c("striped", "scale_down", "hold_position"), full_width = FALSE)
+```
+
+Due to limited observation data available for many beaches, I chose to contrast the datasets of two beaches with complete records: Marie Curtis East Beach and Sunny Side Beach. As the data for Sunnyside Beach spans from 2008 to 2023 and for Marie Curtis Park East Beach from 2010 to 2023, the analysis focuses on the data from 2010 to 2023. The following line charts demonstrate the comparison of data from these two beaches.
+
+```{r}
+#| messages: false
+#| echo: false
+#| warning: false
+#| label: fig-1
+#| fig-cap: "Comparison of Turbidity Levels at Marie Curtis Park East Beach and Sunny Side Beach (2010-2023)"
+
+Marie_Curtis_Park_East_Beach = subset(summarized_beach_data_year, beachName == "Marie Curtis Park East Beach" & dataCollectionDate >= 2010  )
+Sunnyside_Beach = subset(summarized_beach_data_year, beachName == "Sunnyside Beach" & dataCollectionDate >= 2010 )
+
+colors <- c(
+  "Marie Curtis Park East Beach" = "steelblue",
+  "Sunnyside Beach" = "darkred"
+)
+
+ggplot() +
+  # Define axis labels
+  labs(
+    y = "turbidity",
+    x = "Year",
+    color = "Beach") + 
+  theme_minimal() +
+  geom_line(data = Marie_Curtis_Park_East_Beach, aes(x = dataCollectionDate, y = turbidity, color = "Marie Curtis Park East Beach",group = 1)) +
+  geom_line(data = Sunnyside_Beach, aes(x = dataCollectionDate, y = turbidity, color = "Sunnyside Beach",group = 1))  +
+  theme(legend.position = "top")
+
+```
+
+@fig-1 depicts the turbidity trends at Marie Curtis Park East Beach and Sunny Side Beach from 2010 to 2023. Turbidity, an indicator of water clarity, is shown on the y-axis, while the x-axis indicates the years. The red line represents the turbidity at Marie Curtis Park East Beach, and the blue line shows Sunny Side Beach. Marie Curtis Park East Beach exhibits more significant fluctuations in turbidity, indicating greater variability. Both beaches reach their lowest turbidity levels in 2022. Overall, turbidity levels are consistently higher at Marie Curtis Park East Beach compared to Sunny Side Beach, indicating potential differences in water quality between the two locations and implying poorer environmental conditions at Marie Curtis Part East Beach.
+
+```{r}
+#| messages: false
+#| echo: false
+#| warning: false
+#| label: fig-2
+#| fig-cap: "Comparison of Windspeed between Marie Curtis Park East Beach and Sunny Side Beach (2010-2023)"
+
+colors <- c(
+  "Marie Curtis Park East Beach" = "steelblue",
+  "Sunnyside Beach" = "darkred"
+)
+
+ggplot() +
+  # Define axis labels
+  labs(
+    y = "windSpeed",
+    x = "Year",
+    color = "Beach") + 
+  theme_minimal() +
+  geom_line(data = Marie_Curtis_Park_East_Beach, aes(x = dataCollectionDate, y = windSpeed, color = "Marie Curtis Park East Beach",group = 1)) +
+  geom_line(data = Sunnyside_Beach, aes(x = dataCollectionDate, y = windSpeed, color = "Sunnyside Beach",group = 1)) +
+  theme(legend.position = "top")
+
+```
+
+@fig-2 depicts the windspeed variations at Marie Curtis Park East Beach and Sunny Side Beach from 2010 to 2023. The x-axis represents the years, from 2010 to 2023, while the y-axis indicates windspeed. Both lines show similar fluctuations, reaching their peak in 2012 at about 18, indicating similar and consistent windspeed patterns between the two beaches over the observed period. Interestingly, in 2022, when the turbidity levels were at their lowest, windspeed were relatively high. This implies a potential deviation from the typical correlation between windspeed and turbidity, highlighting the influence of specific environmental conditions and geographical factors on this relationship.
+
+```{r}
+#| messages: false
+#| echo: false
+#| warning: false
+#| label: fig-3
+#| fig-cap: "Comparison of Air Temperature between Marie Curtis Park East Beach and Sunny Side Beach (2010-2023)"
+
+colors <- c(
+  "Marie Curtis Park East Beach" = "steelblue",
+  "Sunnyside Beach" = "darkred"
+)
+
+ggplot() +
+  # Define axis labels
+  labs(
+    y = "airTemp",
+    x = "Year",
+    color = "Beach") + 
+  theme_minimal() +
+  geom_line(data = Marie_Curtis_Park_East_Beach, aes(x = dataCollectionDate, y = airTemp, color = "Marie Curtis Park East Beach",group = 1)) +
+  geom_line(data = Sunnyside_Beach, aes(x = dataCollectionDate, y = airTemp, color = "Sunnyside Beach",group = 1)) +
+  theme(legend.position = "top")
+
+```
+
+@fig-3 compares the air temperature data between Marie Curtis Park East Beach and Sunny Side Beach from 2010 to 2023. The x-axis represents the years, while the y-axis indicates the air temperature. The graph reveals remarkably similar fluctuations in air temperature between the two beaches, as evidenced by the closely aligned red and blue lines. Furthermore, there are similar peaks and troughs in air temperature over the observed period. For instance, in 2012, both beaches experienced peak temperatures of about 24.5 degrees Centigrade, followed by a sharp decline to around 16 degrees in 2017. This indicates a consistent pattern of weather conditions between the two beach locations.
+
+```{r}
+#| messages: false
+#| echo: false
+#| warning: false
+#| label: fig-4
+#| fig-cap: "Comparison of Waterfowl Population between Marie Curtis Park East Beach and Sunny Side Beach (2010-2023)"
+
+colors <- c(
+  "Marie Curtis Park East Beach" = "steelblue",
+  "Sunnyside Beach" = "darkred"
+)
+
+ggplot() +
+  # Define axis labels
+  labs(
+    y = "waterFowl",
+    x = "Year",
+    color = "Beach") + 
+  theme_minimal() +
+  geom_line(data = Marie_Curtis_Park_East_Beach, aes(x = dataCollectionDate, y = waterFowl, color = "Marie Curtis Park East Beach",group = 1)) +
+  geom_line(data = Sunnyside_Beach, aes(x = dataCollectionDate, y = waterFowl, color = "Sunnyside Beach",group = 1)) +
+  theme(legend.position = "top")
+
+```
+
+@fig-4 compares the waterfowl populations between Marie Curtis Park East Beach and Sunny Side Beach from 2010 to 2023. The x-axis represents the years, from 2010 to 2023, while the y-axis indicates the waterfowl population. The red line peaked at 80 in 2010 for Marie Curtis Park East Beach, followed by a sharp decline and mild fluctuations afterward. In contrast, the blue line, depicting Sunny Side Beach, demonstrates regular fluctuations and maintains a consistently higher waterfowl population from 2011 to 2023. This suggests the environmental factors, such as water quality and vegetation cover, may favor the presence of waterfowl at Sunny Side Beach. This observation aligns with the findings from @fig-1, indicating lower turbidity and potentially better environmental conditions at Sunny Side Beach compared to Marie Curtis Part East Beach.
+
+```{r}
+#| messages: false
+#| echo: false
+#| warning: false
+#| label: fig-5
+#| fig-cap: "Rain Amount Comparison between Marie Curtis Park East Beach and Sunny Side Beach (2010-2023)"
+
+colors <- c(
+  "Marie Curtis Park East Beach" = "steelblue",
+  "Sunnyside Beach" = "darkred"
+)
+
+ggplot() +
+  # Define axis labels
+  labs(
+    y = "rainAmount",
+    x = "Year",
+    color = "Beach") + 
+  theme_minimal() +
+  geom_line(data = Marie_Curtis_Park_East_Beach, aes(x = dataCollectionDate, y = rainAmount, color = "Marie Curtis Park East Beach",group = 1)) +
+  geom_line(data = Sunnyside_Beach, aes(x = dataCollectionDate, y = rainAmount, color = "Sunnyside Beach",group = 1)) +
+  theme(legend.position = "top")
+
+```
+
+@fig-5 compares the rainfall amounts between Marie Curtis Park East Beach and Sunny Side Beach from 2010 to 2023. The x-axis represents the years spanning from 2010 to 2023, while the y-axis indicates the amount of rainfall. Remarkably, both lines exhibit similar fluctuations over the years, with notable peaks occurring in 2010, 2015, 2018, and 2020, where both beaches experienced the high rainfall amounts. Comparing these results with the findings of @fig-1, there appears to be a generally positive correlation between rainfall amount and turbidity for the two beaches. However, it is interesting to note that despite the high rainfall amount in 2018 for Sunnyside Beach, there is a low turbidity level, which may due to the clarity of rainwater or other specific environmental factors. 
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| label: fig-6
+#| fig-cap: "Turbidity Comparison Across Ten Beaches"
+ggplot(summarized_beach_data, aes(x = beachName, y = turbidity)) +
+geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7) +
+  theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))
+```
+
+@fig-6 displays the turbidity levels across ten different beaches, representing the average turbidity values from 2008 to 2023. Each bar represents the turbidity measurement at a specific beach. Bluffers Beach Park exhibits the highest turbidity level at 18, followed by Kew Balmy Beach at 14, and Woodbine Beaches at 7.5. Conversely, beaches such as Centre Island Beach, Gilbralter Point Beach, Hanlan’s Point Beach and Sunnyside Beach exhibit lower turbidity levels. This visualization provides a clear comparison of turbidity levels among the selected beaches, highlighting the variations in water clarity across different locations.
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| label: fig-7
+#| fig-cap: "Waterfowl Population Across Ten Beaches"
+ggplot(summarized_beach_data, aes(x = beachName, y = waterFowl)) +
+geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7) +
+  theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))
+```
+
+@fig-7 presents the population of waterfowl across ten different beaches, displaying the average counts from 2008 to 2023. Each bar represents the number of waterfowl observed at a specific beach. Centre Island Beach leads the highest count at 67, followed closely by Ward's Island Beaches at 66 and Bluffers Beach Park at 60. Hanlan Point Beach, Kew Balmy Beach, and Bluffers Beach Park all have approximately 47 waterfowl. Interestingly, beaches with high turbidity levels, as depicted in @fig-6, also demonstrate a larger presence of waterfowl. This suggests a correlation between waterfowl activities and turbidity levels, with foraging, nesting, and feces contributing to localized increases in turbidity through sediment disturbance and nutrient introduction.
 
 # Model
-The objective of the model is to discern the relationship between winter speed, rainfall amount, air and water temperature with water turbidity and to quantify the relationship’s strength and direction. The study utilizes a single linear regression model to analyse the dataset obtained from the Toronto Open Data portal. 
 
-## Model set up
+The objective of the model is to analyze the relationship between environmental factors (such as, wind speed, rainfall amount, air and water temperature, waterfowl, wave action) and water turbidity, quantifying its strength and direction. The study utilizes a multiple linear regression model to analyze the dataset sourced from the Toronto Open Data portal. 
 
-## Model justification
+A model is trained and constructed by utilizing 80 percent of the whole dataset, with the remailing 20 percent used for prediction. Formulated based on survey data, the multi-linear regression model is suited to the study’s objectives (Equation 1). Subsequently, the model is used to predict climate and environmental characteristics across various beaches in Toronto.
+
+\begin{equation}
+\begin{aligned}
+turbidity = & \beta_{0} + \beta_{1}x_{beachName} +
+\beta_{2}x_{windSpeed} + \beta_{3}x_{dataCollectionDate} + \beta_{4}x_{airTemp} + \\  &\beta_{5}x_{waterTemp}+ \beta_{6}x_{waterFowl}+ \beta_{7}x_{rainAmount}+ \beta_{8}x_{waveAction}
+\end{aligned}
+\label{eq-1}
+\end{equation}
+
+In equation \ref{eq-1}, $turbidity$ represents the water turbidity for each beach, while all other variables are denoted by $x_i$. 
+
+In this equation, each $\beta$ represents a coeﬀicient determined through regression analysis. The variables selected for this project include beach name, wind speed, data collection date, air and water temperature, waterfowl presence, rainfall amount and wave action. These environmental factors were chosen as they are established indicators of beach turbidity and are useful for understanding its variations.
+
+After developing the multi-linear regression model, I utilize the predict() function in R[@r] to apply the model and generate predictions. This enables estimating the environmental characteristics across different beaches in Toronto and explore potential relationships between these independent variables with beach turbidity. The stan_glm() function is used for this regression analysis. The linear-shaped distribution of this dataset makes linear regression a suitable approach. 
+
+After completing the modeling process, I utilize the remaining 20% of the data to make predictions. Analyzing these prediction results allows me to assess the reliability of the model. Some of the predicted data agrees well with the given data, which indicates that the model is somewhat reliable (See @tbl-3). However, I have also observed instances of negative numbers in the predicted results, which requires consideration of the limitations of the model. The presence of negative values suggests potential inaccuracies in predicting the target variable in certain cases, or there are other unaccounted factors affecting the prediction outcomes. Therefore, I need to consider both the positive and negative results of the model predictions to fully understand their validity and applicability. 
 
 # Result
-These four figures provide a clear visual relationship between the water turbidity and rainfall amount, wind speed, air and water temperature. Displayed with rainfall amount, wind speed, air and water temperature scores on the x-axis and turbidity score on the y-axis, the data points represent individual beaches. The line running through the cluster of points represents the linear regression line, which captures the average effect of environmental factors’ score on turbidity. Notably, the slope of the line is upward, suggesting a positive correlation, indicating that the scores of rainfall amount, wind speed, air and water temperature get higher, the turbidity tend to increase. This trend is consistent across the dataset, indicating a general increase in scores as turbidty increases.
- 
-The scatterplots reveal insights into the relationships between turbidity and various environmental factors. Notably, it appears that the correlation between turbidity and rainfall amount, as well as wind speed, exhibits a stronger association compared to turbidity with air and water temperature. There are several potential explanations for this observed pattern. Firstly, rainfall and wind speed may directly influence the transport and sedimentation of particles in water bodies, thereby impacting turbidity levels more directly. Additionally, the effects of rainfall and wind speed on turbidity might be more immediate and pronounced due to their dynamic and fluctuating nature, leading to more apparent correlations in the scatterplots. Conversely, air and water temperature may exert more indirect or delayed effects on turbidity, such as through influencing biological processes or chemical reactions in the water, resulting in weaker correlations in the plotted data. Furthermore, the observed differences in correlation strength could also be attributed to the spatial and temporal variability of these environmental factors, highlighting the complex interplay of multiple variables in shaping turbidity levels in aquatic ecosystems.
+
+@tbl-2 shows the estimated coefficients for the multi-linear regression equation derived from the Toronto Beach Observation dataset. These coeﬀicients, fitting into Equation 1, are calculated based on the dataset’s data. The table is made using kable function from `knitr` [@rKnitr] and formatted using `kableExtra` [@citekableExtra]. 
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| label: tbl-2
+#| tbl-cap: "The Modeling Result"
+model <-  readRDS(file = here("models/change_of_turbidity.rds"))
+coefficients <- broom.mixed::tidy(model, conf.int = TRUE) 
+
+kable(coefficients,format = "latex",  booktabs = TRUE, align = "c") |> kable_styling(latex_options = "scale_down", font_size = 7)
+
+```
+
+In the data modeling process utilizing the Toronto Beach Observation dataset, I divided 80% of the data for model training and allocated the remaining 20% for prediction. @fig-8 illustrates the modeling results, where the x-axis represents the estimate, and the y-axis depicts the coefficients corresponding to each other. This visualization provides insights into the coefficients variations across different beaches concerning the estimated values. Analyzing these coefficients provides a better understanding of the factors influencing the model’s predictive capability and individual contributions of each other to the overall estimation.
+
+@fig-8 displays the coefficients derived from linear regression analysis conducted on the Toronto beach observation dataset. Each coefficient estimate is accompanied by error bars representing the confidence interval, providing insights into the uncertainty associated with the estimates. When interpreting these coefficients, it is important to note that positive values suggest a strong positive linear regression relationship between the independent variables and turbidity, while negative values suggest a lack of linear regression relationship. These coefficients offer valuable information about the strength and direction of the relationships between environmental factors and turbidity levels in beach waters, which is of use in understanding the dynamics influencing water quality.
+
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| label: fig-8
+#| fig-cap: "The Predicting Result"
+
+coefficients[-1,] |>
+  ggplot(aes(estimate, term)) + geom_point() + geom_errorbar(aes(xmin = conf.low, xmax = conf.high)) + labs(title = "Coefficient Estimates", x = "Estimate", y = "Coefficient") +   theme(axis.text.y = element_text(size = 5))
+```
+
+Utilizing the results of my linear regression model, I can formulate an equation that adheres to the structure outlined in equation 1, incorporating specific $\beta$ coeﬀicients for each variable. Due to the numerous variables involved, detailing the equation fully is challenging. Essentially, the equation integrates the $\beta$ value corresponding to a variable if an individual’s characteristic matches that variable. @tbl-3 offers examples illustrating how the probability varies based on different variables. 
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| label: tbl-3
+#| tbl-cap: "Example of Prediction model"
+
+test_prediction = read_csv(
+  file = here("data/cleaned_beach_data_test_with_predict.csv"),
+  show_col_types = FALSE
+) |> select(-turbidity)
+
+# Select only the first 10 rows for the table
+probability_subset <- head(test_prediction, 10)
+
+# Create the table with kable and format with kable_styling
+kable(probability_subset, format = "latex" ,booktabs = TRUE, align = "c") |>
+  kable_styling(latex_options = c("striped", "scale_down", "hold_position"), full_width = FALSE)
+```
+
+Based on the model I established, I randomly selected 10 prediction results, detailed in @tbl-3. The analysis of these results reveals some findings on beach conditions and environmental factors. Firstly, the model demonstrates its capability to predict various environmental variables across different beaches, as seen in @tbl-3 where the values of Hanlan’s Point Beach agree well with the original data given in @tbl-1. This indicates its potential in providing valuable insights for beach monitoring and management. Secondly, the variability observed in predicted values across beaches and time intervals suggests distinct patterns and trends in environmental data at each location. This highlights the importance of considering site-specific factors when assessing beach conditions. Additionally, the inclusion of multiple variables such as wind speed, air temperature, water temperature, waterfowl presence, rainfall amount, and wave action emphasize the complex interaction of environmental factors influencing beach conditions, which is important for effective beach management and environmental protection. Lastly, comparing predicted values with actual observations enables the evaluation of the model's accuracy and reliability, facilitating further refinement and improvement of predictive capabilities, which contributes to more informed decision-making and improved beach monitoring practices.
 
 # Discussion
 
+In this section, it is important to explore the implications of the analysis conducted on the Toronto beach observation dataset. The examination of various numerical variables alongside macro variables such as beach names and years, offers valuable insights into beach conditions and turbidity trends over time. The focus on two specific beaches with extensive data coverage allows for a better understanding of the beach environments.
 
-The visual analysis of the dataset provides valuable insights into the relationship between water turbidity and various environmental factors, shedding light on the dynamics of water quality in Toronto's aquatic ecosystems. The upward slope of the linear regression line across all four figures indicates a positive correlation between turbidity and the scores of rainfall amount, wind speed, air temperature, and water temperature. This consistent trend underscores the influence of environmental factors on turbidity levels and offers several implications for understanding and managing water quality in urban coastal areas.
+## Investigating the Dynamics of Water Quality in Toronto's Water Bodies
 
-The stronger correlations observed between turbidity and rainfall amount, as well as wind speed, compared to air and water temperature, suggest that precipitation and wind dynamics play pivotal roles in shaping turbidity levels. Rainfall and wind speed may directly impact the transport and suspension of particles in water bodies, leading to increased turbidity levels. These findings emphasize the need for robust stormwater management strategies to mitigate the adverse effects of urban runoff and erosion on water quality in coastal areas.
+Environmental research depends on understanding the complex interaction among various factors influencing water quality. This study explores the intricate dynamics shaping water quality in Toronto's water bodies, with a specific focus on turbidity as the dependent variable. Turbidity, representing water clarity, serves as a key indicator of overall water quality and ecosystem health. However, this study recognizes the multilevel nature of water quality and aims to explore the influence of several independent variables on turbidity levels. Seven key variables were identified for analysis, each offering unique insights into Toronto's aquatic ecosystems. While turbidity is central to the analysis, other variables such as beach name, data collection date, waterfowl presence, wave action, rainfall amount, wind speed, air temperature, and water temperature were also considered due to their potential to influence turbidity levels. These variables were selected based on their relevance and significance in understanding the complex dynamics of water quality. Over a thirteen-year period from 2008 to 2023, this study seeks to reveal the intricate relationships among these variables, providing valuable insights into the factors shaping water quality in Toronto's water bodies. Through rigorous analysis and exploration, this research aims to contribute to a deeper understanding of the environmental processes driving water quality dynamics and inform effective management and conservation strategies for Toronto's aquatic ecosystems.
 
-Furthermore, the immediate and pronounced effects of rainfall and wind speed on turbidity highlight the importance of timely monitoring and response mechanisms to mitigate potential pollution events and safeguard public health. By incorporating real-time data on weather patterns and turbidity levels, authorities can implement proactive measures to minimize the risk of contamination and enhance recreational water safety.
+## Comparative Analysis of Turbidity Trends and Environmental Factors
 
-Conversely, the weaker correlations observed between turbidity and air and water temperature suggest more indirect or delayed influences on turbidity dynamics. Biological processes and chemical reactions influenced by temperature variations may contribute to fluctuations in turbidity levels over longer time scales. Understanding these complex interactions is essential for developing comprehensive management strategies that address both short-term fluctuations and long-term trends in water quality.
+The "Toronto Beach Observation Dataset" offers a repository of data from ten diverse beaches across Toronto. However, due to limited observation data for many beaches, a focused comparative analysis was conducted using complete records from Marie Curtis East Beach and Sunny Side Beach. This analysis primarily examined data from 2010 to 2023, enabling a detailed exploration of turbidity trends and environmental factors influencing water quality. The findings revealed significant differences in turbidity levels between Marie Curtis Park East Beach and Sunny Side Beach, with the former consistently showing higher levels through the observation period. This variation suggests potential differences in water quality and environmental conditions between the two beach locations. Additionally, the analysis investigated the relationships between turbidity and various environmental factors, such as wind speed, air temperature, waterfowl presence, rainfall amount, and wave action. By illustrating these relationships, the study aimed to examine the intricate dynamics influencing turbidity levels in Toronto's beaches. Insights derived from this analysis provide valuable information for understanding the factors influencing water quality variations and can guide management and conservation efforts to improve beach environments and safeguard public health and safety.
 
-While the findings of this study provide valuable insights into the relationship between turbidity and environmental factors, several limitations warrant consideration for future research and improvement. The analysis focused solely on linear relationships between variables, overlooking potential nonlinear dynamics and interactions. Additionally, the study's temporal scope from 2015 to 2023 may not capture longer-term trends or emerging patterns in turbidity dynamics. Future research efforts should explore more sophisticated analytical techniques and expand the temporal and spatial scope of data collection to enhance our understanding of the multifaceted drivers of water turbidity in urban coastal environments. Moreover, collaboration between researchers, policymakers, and local communities is crucial for implementing evidence-based strategies to preserve and enhance water quality for current and future generations.
+## Model Training, Prediction, and Evaluation
 
-{{< pagebreak >}}
-## References{.unnumbered}
+The modeling process began with dividing the dataset into 80% for training and 20% for prediction, enabling the development of a multi-linear regression model to examine the relationship between environmental factors and water turbidity in Toronto's beaches. Utilizing the large-scale Toronto Beach Observation Dataset, the model was trained to identify patterns and associations among various independent variables and turbidity levels. Subsequently, the model's predictive capabilities were evaluated using the predict() function in R, providing valuable insights into its reliability in estimating environmental characteristics across diverse beaches in Toronto. Comparing predicted values with observed data confirmed the model's accuracy, showing its potential as a valuable tool for beach monitoring and management. However, the analysis also found negative values in some prediction outcomes, indicating potential inaccuracies or limitations in the model's predictive abilities. These inconsistencies suggest further investigation is needed to understand underlying causes, such as unconsidered variables, measurement errors, or complexities in the relationship between environmental factors and water turbidity.
+
+## Insights from Linear Regression Analysis and Predictive Modeling
+
+The estimated coefficients derived from linear regression analysis provide insights into the relationships between environmental factors and beach water turbidity. These coefficients offer information on the strength and direction of these relationships, for better understanding the complex forces governing water quality in coastal ecosystems. By quantifying the influence of each variable on turbidity levels, stakeholders can prioritize and address key environmental factors affecting beach health. Moreover, predictive modeling utilizes these coefficients to formulate an equation depicting the probabilistic relationships between environmental variables and turbidity. Despite the complexity of multiple variables, this equation can be used as a foundational framework for understanding the interaction between environmental factors and turbidity levels. However, it's important to acknowledge uncertainties and challenges associated with predictive modeling, including data quality and external variables not considered. Continuous validation and refinement of the model are necessary to enhance predictive capabilities and ensure applicability across diverse beach environments. Overall, integrating linear regression analysis and predictive modeling offers an effective approach to understanding and managing water quality in beach ecosystems, enabling informed decision-making and proactive management strategies for coastal environments.
+
+## Weakness and Implications for Future Research
+
+While this study offers valuable insights into the relationships between environmental factors and water turbidity in Toronto's beaches, several limitations suggest methods for future research. Firstly, reliance on observational data collected by city staff may bring about biases and limitations. Variations in data collection protocols, equipment calibration, and observer expertise could impact data strength. Lessening these biases by standardized protocols and increased training for data collectors could improve data quality. Secondly, focusing on turbidity may overlook other parameters influencing beach health and ecosystem situation, such as nutrient concentrations and microbial contamination. Future research could adopt a multidimensional approach to make thorough assessments. Thirdly, although linear regression provides a useful framework, it may oversimplify complex relationships inherent in natural systems. Exploring advanced modeling techniques could examine these complexities more accurately. Extending the time scope beyond the study's thirteen-year period and broadening the geographical focus beyond Toronto could increase the generalizability and applicability of future research findings.
+
+\newpage
+# References
 
 
 

@@ -12,7 +12,7 @@ library(tidyverse)
 library(here)
 library(rstanarm)
 library(modelsummary)
-
+library(caTools)
 
 #### Read data ####
 cleaned_beach_data = read_csv(
@@ -21,117 +21,44 @@ cleaned_beach_data = read_csv(
 )
 
 
-summarized_beach_data <-
-  cleaned_beach_data |>
-  group_by(dataCollectionDate) |>
-  summarise(across(c(windSpeed, turbidity, airTemp, waterTemp, rainAmount), mean))
+# split data for training and testing
 
+set.seed(853)
+index  <-  sample.split(cleaned_beach_data$windSpeed,SplitRatio = 0.8)
+train_data <- subset(cleaned_beach_data, index == TRUE)
+test_data <- subset(cleaned_beach_data, index == FALSE)
 
-summarized_beach_data
-# model1
-
-# Create a line plot, x-axis is the wind speed and the y-axis is the turbidity
-model_1 <- summarized_beach_data |>
-  ggplot(aes(x = windSpeed, y = turbidity)) +
-  labs(x = "Wind speed",
-       y = "Turbidity",
-       title = "Wind speed effect on turbidity",
-       caption = "Figure 1") +
-  geom_point() + 
-  geom_smooth(
-    method = "lm",
-    se = TRUE,
-    linetype = "dashed",
-    formula = "y ~ x"
-  ) +
-  theme_minimal()
-
-model_1
-
-
-
-#model2
-
-
-# Create a line plot, x-axis is the air temperature and the y-axis is the turbidity
-model_2 <- summarized_beach_data |>
-  ggplot(aes(x = airTemp, y = turbidity)) +
-  labs(x = "Air temperature",
-       y = "Turbidity",
-       title = "Air temperature effect on turbidity",
-       caption = "Figure 2") +
-  geom_point() + 
-  geom_smooth(
-    method = "lm",
-    se = TRUE,
-    linetype = "dashed",
-    formula = "y ~ x"
-  ) +
-  theme_minimal()
-
-model_2
-
-
-
-# model 3
-
-
-# Create a line plot, x-axis is the water temperature and the y-axis is the turbidity
-model_3 <- summarized_beach_data |>
-  ggplot(aes(x = waterTemp, y = turbidity)) +
-  labs(x = "Water temperature",
-       y = "Turbidity",
-       title = "Water temperature effect on turbidity",
-       caption = "Figure 3") +
-  geom_point() + 
-  geom_smooth(
-    method = "lm",
-    se = TRUE,
-    linetype = "dashed",
-    formula = "y ~ x"
-  ) +
-  theme_minimal()
-
-model_3
-
-
-# model 4
-
-
-# Create a line plot, x-axis is the rain amount and the y-axis is the turbidity
-model_4 <- summarized_beach_data |>
-  ggplot(aes(x = rainAmount, y = turbidity)) +
-  labs(x = "Rain amount",
-       y = "Turbidity",
-       title = "Rain amount effect on turbidity",
-       caption = "Figure 4") +
-  geom_point() + 
-  geom_smooth(
-    method = "lm",
-    se = TRUE,
-    linetype = "dashed",
-    formula = "y ~ x"
-  ) +
-  theme_minimal()
-
-model_4
-
-
+## training
 change_of_turbidity <-
   stan_glm(
-    formula = turbidity ~ rainAmount + airTemp + waterTemp + windSpeed,
-    data = summarized_beach_data,
+    formula = turbidity ~ beachName + rainAmount + airTemp + waterTemp + windSpeed + dataCollectionDate + waterFowl + waveAction,
+    data = train_data,
     family = gaussian(),
-    prior = normal(location = 0, scale = 2.5),
-    prior_intercept = normal(location = 0, scale = 2.5),
+    prior = normal(location = 0, scale = 2.5,autoscale = TRUE),
+    prior_intercept = normal(location = 0, scale = 2.5,autoscale = TRUE),
     prior_aux = exponential(rate = 1),
     seed = 853
   )
-
 
 modelsummary(change_of_turbidity)
 
 saveRDS(
   change_of_turbidity,
   file = "models/change_of_turbidity.rds"
+)
+
+## testing
+model <-  readRDS(file = here("models/change_of_turbidity.rds"))
+predictions <- predict(model, newdata = test_data, type = "response")
+
+# save data
+write_csv(
+  x = train_data,
+  file = "data/cleaned_beach_data_train.csv"
+)
+
+test_data$predict = predictions
+write_csv(
+  x = test_data,
+  file = "data/cleaned_beach_data_test_with_predict.csv"
 )

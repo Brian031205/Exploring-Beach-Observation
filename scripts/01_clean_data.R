@@ -19,24 +19,26 @@ raw_beach_data <-
   )
 
 # reformat the date to year only
-data_year_month = as.Date(data$dataCollectionDate, format = "%Y-%m-%d")|> format("%Y-%m")
+data_year_month = as.Date(raw_beach_data$dataCollectionDate, format = "%Y-%m-%d")|> format("%Y")
 cleaned_beach_data = raw_beach_data |> mutate(dataCollectionDate = data_year_month)
-
-
-# Remove all observations with missing data 
-cleaned_beach_data <- na.omit(cleaned_beach_data)
 
 
 cleaned_beach_data <- cleaned_beach_data |> 
   select(
+    beachName,
     windSpeed,
     dataCollectionDate,
     airTemp,
     waterTemp,
+    waterFowl,
     rainAmount,
+    waveAction,
     turbidity
-  
 )
+
+
+# Remove all observations with missing data 
+cleaned_beach_data <- na.omit(cleaned_beach_data)
 
 
 
